@@ -12,7 +12,7 @@ options(replace.assign = TRUE,
         width = 55)
 set.seed(1)
 
-
+## load the data using standard R data structures
 ## @knitr makedata1, tidy = FALSE
 n <- 10
 m <- 6
@@ -25,7 +25,7 @@ fmeta <- data.frame(geneId = 1:n,
 rownames(fmeta) <- 
   rownames(marray) <- paste0("probe", 1:n)
 
-
+## Store the data in a single variable. A list with 3 elements.
 ## @knitr makedata2, tidy= FALSE
 maexp <- list(marray = marray,
               fmeta = fmeta,
@@ -58,7 +58,7 @@ maexp2 <- list(marray = marray2,
 rm(marray2, fmeta2, pmeta2) ## clean up
 str(maexp2)
 
-
+## set up the data as a class with methods
 ## @knitr makeclass, tidy = FALSE
 MArray <- setClass("MArray",
                    slots = c(marray = "matrix",
@@ -68,10 +68,15 @@ MArray <- setClass("MArray",
 
 ## @knitr makeobject, tidy = FALSE
 MArray() ## an empty object
-MArray(marray = 1:2) ## not allowed
-ma <- MArray(marray = maexp[[1]],
-             pmeta = maexp[["pmeta"]],
-             fmeta = maexp[["fmeta"]])       
+#MArray(marray = 1:2) ## not allowed
+# ma <- MArray(marray = maexp[[1]],
+#              pmeta = maexp[["pmeta"]],
+#              fmeta = maexp[["fmeta"]])       
+ma <- MArray(marray = marray,
+             pmeta = pmeta,
+             fmeta = fmeta)       
+rm(marray, fmeta, pmeta) ## clean up
+
 class(ma)
 ma
 
@@ -98,21 +103,24 @@ setMethod("show",
 ma 
 
 
-## @knitr makegen
+## @knitr makegen # name the new generic and args for defining class-specific method
 setGeneric("marray", function(object) standardGeneric("marray"))
 
 
-## @knitr makegen2
+## @knitr makegen2 # elipsis in the function allows for other methods to use more args
 setGeneric("marray", function(object, ...) standardGeneric("marray"))
 
 
-## @knitr makemeth, tidy = FALSE
+## @knitr makemeth, tidy = FALSE # make the method named above
+## function "marray" is now retrieve the marray matrix in the MArray instance named in the arg
 setMethod("marray", "MArray", 
           function(object) object@marray)
 marray(ma)
 
 
-## @knitr otheraccess, echo = FALSE
+## @knitr otheraccess, echo = FALSE 
+# create function(object) to retrieve pmeta and fmeta from MArray instance
+# .silent is a variable, don't know meaning or use
 .silent <- setGeneric("pmeta", function(object) standardGeneric("pmeta"))
 .silent <- setGeneric("fmeta", function(object) standardGeneric("fmeta"))
 .silent <- setMethod("pmeta", "MArray", function(object) object@pmeta)
@@ -124,7 +132,8 @@ letters[1:3]
 `[`(letters, 1:3)
 
 
-## @knitr subsetma, tidy = FALSE
+## @knitr subset ma, tidy = FALSE
+# build a bracket function for subsets of a MArray instance
 setMethod("[", "MArray",
           function(x,i,j,drop="missing") {              
             .marray <- x@marray[i, j]
@@ -138,6 +147,7 @@ ma[1:5, 1:3]
 
 
 ## @knitr setval, tidy = FALSE
+## setValidity function looks to verify that the data matches the meta-data structure
 setValidity("MArray", function(object) {
   msg <- NULL
   valid <- TRUE
@@ -167,6 +177,7 @@ validObject(ma)
 
 
 ## @knitr notvalid
+# the setValidity function for MArray now rejects, with explanation, a bad instance 
 x <- matrix(1:12, ncol = 3)
 y <- fmeta(ma)
 z <- pmeta(ma)
@@ -182,11 +193,13 @@ validObject(broken)
 
 
 ## @knitr genreplacement, tidy = FALSE
+# create a replacement method "object<-" to replace accessable slot in the instance
 setGeneric("marray<-", 
            function(object, value) standardGeneric("marray<-"))
 
 
 ## @knitr replacement, tidy = FALSE
+# define the replacement method
 setMethod("marray<-", "MArray", 
           function(object, value) {
             object@marray <- value
@@ -196,16 +209,17 @@ setMethod("marray<-", "MArray",
 
 
 ## @knitr replacement2, tidy = FALSE
-tmp <- matrix(rnorm(n*m, 10, 5), ncol = m)
-marray(ma) <- tmp
+tmp <- matrix(rnorm(n*m, 10, 5), ncol = m) 
+marray(ma) <- tmp # replace with invalid data, throws error
 colnames(tmp) <- LETTERS[1:m]
 rownames(tmp) <- paste0("probe", 1:n)
-head(marray(ma), n = 2)
-marray(ma) <- tmp
+head(marray(ma), n = 2)  #the old data
+marray(ma) <- tmp # replace with new valid data, no error
 head(marray(ma), n = 2)
 
 
 ## @knitr replacementex, echo = FALSE
+# set up replacement for the meta-data
 .silent <- setGeneric("fmeta<-", function(object, value) standardGeneric("fmeta<-"))
 .silent <- setMethod("fmeta<-", "MArray", 
                      function(object, value) {
@@ -222,7 +236,7 @@ head(marray(ma), n = 2)
                      })
 
 
-## @knitr replacepmeta
+## @knitr replace pmeta, this replace adds a column
 pmeta(ma)$sex <- rep(c("M", "F"), 3)
 pmeta(ma)
 
